@@ -1,4 +1,39 @@
-# React + TypeScript + Vite
+# LegalMind Frontend
+
+LegalMind - AI Legal Assistant frontend application built with React, TypeScript, and Vite.
+
+## 🚀 Quick Start
+
+### Development
+
+```bash
+npm install
+npm run dev
+```
+
+### Build
+
+```bash
+npm run build
+```
+
+### Preview Production Build
+
+```bash
+npm run preview
+```
+
+## 🛠️ Tech Stack
+
+- **React 19** - UI library
+- **TypeScript** - Type safety
+- **Vite** - Build tool
+- **Tailwind CSS** - Styling
+- **i18next** - Internationalization
+- **Axios** - HTTP client
+- **PWA** - Progressive Web App support
+
+---
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

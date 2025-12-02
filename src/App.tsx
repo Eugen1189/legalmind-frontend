@@ -3,14 +3,12 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { checkHealth } from './api/api'; // <--- ІМПОРТ
-import { useTranslation } from 'react-i18next';
 import { Login } from './pages/Login';
 import { Chat } from './pages/Chat';
 import { PasswordRecovery } from './pages/PasswordRecovery';
 
 // Компонент для відображення помилки/завантаження
 const StartupStatus: React.FC<{ status: 'loading' | 'error' | 'success' }> = ({ status }) => {
-    const { t } = useTranslation();
     const message = 
         status === 'loading' 
             ? 'Завантаження системи LegalMind...'

@@ -31,7 +31,28 @@ const resources = {
         send: "Send",
         install: "Install App",
         error_connect: "⚠️ Connection error: LegalMind server is offline (MVP Mode).",
-        bot_response_mock: "This is a test response from LegalMind (MVP). The backend is not connected yet, but the interface works perfectly."
+        bot_response_mock: "This is a test response from LegalMind (MVP). The backend is not connected yet, but the interface works perfectly.",
+        select_option: "Choose one of the options",
+        type_answer: "Type your answer"
+      },
+      install: {
+        button: "Install",
+        button_title: "Install LegalMind as an app",
+        modal_title: "Install LegalMind",
+        instructions_intro: "To install LegalMind as an app on your device:",
+        ios_step1: "Tap the Share button",
+        ios_step1_location: "at the bottom of the screen",
+        ios_step2: "Scroll down and select «Add to Home Screen»",
+        ios_step3: "Tap «Add» in the top right corner",
+        safari_step1: "Click Safari menu → Preferences → Websites",
+        safari_step2: "Or add the site to Dock for quick access",
+        safari_step3: "For iOS: use Share button → «Add to Home Screen»",
+        benefits_title: "✨ Installation benefits:",
+        benefit1: "Quick access from home screen",
+        benefit2: "Full-screen mode",
+        benefit3: "No browser address bar",
+        benefit4: "Offline mode (limited)",
+        close: "Got it"
       },
       chips: {
         greeting: "Welcome, {{email}}!",
@@ -74,7 +95,28 @@ const resources = {
         send: "Надіслати",
         install: "Встановити",
         error_connect: "⚠️ Помилка з'єднання: Сервер LegalMind поки не запущено (MVP режим).",
-        bot_response_mock: "Це тестова відповідь від LegalMind (MVP). Бекенд ще не підключено, але інтерфейс працює коректно."
+        bot_response_mock: "Це тестова відповідь від LegalMind (MVP). Бекенд ще не підключено, але інтерфейс працює коректно.",
+        select_option: "Оберіть один з варіантів",
+        type_answer: "Введіть вашу відповідь"
+      },
+      install: {
+        button: "Встановити",
+        button_title: "Встановити LegalMind як додаток",
+        modal_title: "Встановити LegalMind",
+        instructions_intro: "Щоб встановити LegalMind як додаток на ваш пристрій:",
+        ios_step1: "Натисніть кнопку «Поділитися»",
+        ios_step1_location: "внизу екрану",
+        ios_step2: "Прокрутіть вниз і виберіть «На екран «Домой»»",
+        ios_step3: "Натисніть «Додати» у правому верхньому куті",
+        safari_step1: "Натисніть меню Safari → Налаштування → Веб-сайти",
+        safari_step2: "Або додайте сайт до Dock для швидкого доступу",
+        safari_step3: "Для iOS: використовуйте кнопку «Поділитися» → «На екран «Домой»»",
+        benefits_title: "✨ Переваги встановлення:",
+        benefit1: "Швидкий доступ з головного екрану",
+        benefit2: "Робота у повноекранному режимі",
+        benefit3: "Відсутність адресного рядка браузера",
+        benefit4: "Офлайн-режим (обмежений)",
+        close: "Зрозуміло"
       },
       chips: {
         greeting: "Вітаємо, {{email}}!",
@@ -117,7 +159,28 @@ const resources = {
         send: "Invia",
         install: "Installa App",
         error_connect: "⚠️ Errore di connessione: Il server LegalMind è offline (Modalità MVP).",
-        bot_response_mock: "Questa è una risposta di prova da LegalMind (MVP). Il backend non è ancora collegato."
+        bot_response_mock: "Questa è una risposta di prova da LegalMind (MVP). Il backend non è ancora collegato.",
+        select_option: "Scegli una delle opzioni",
+        type_answer: "Scrivi la tua risposta"
+      },
+      install: {
+        button: "Installa",
+        button_title: "Installa LegalMind come app",
+        modal_title: "Installa LegalMind",
+        instructions_intro: "Per installare LegalMind come app sul tuo dispositivo:",
+        ios_step1: "Tocca il pulsante Condividi",
+        ios_step1_location: "in fondo allo schermo",
+        ios_step2: "Scorri verso il basso e seleziona «Aggiungi a Home»",
+        ios_step3: "Tocca «Aggiungi» nell'angolo in alto a destra",
+        safari_step1: "Clicca menu Safari → Preferenze → Siti web",
+        safari_step2: "Oppure aggiungi il sito al Dock per un accesso rapido",
+        safari_step3: "Per iOS: usa pulsante Condividi → «Aggiungi a Home»",
+        benefits_title: "✨ Vantaggi dell'installazione:",
+        benefit1: "Accesso rapido dalla schermata Home",
+        benefit2: "Modalità a schermo intero",
+        benefit3: "Nessuna barra degli indirizzi",
+        benefit4: "Modalità offline (limitata)",
+        close: "Ho capito"
       },
       chips: {
         greeting: "Benvenuto, {{email}}!",

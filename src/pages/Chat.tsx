@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { sendMessageToBackend, processAudio } from '../api/api';
 import type { Clarification, ChatResponse, ActionItem, Consultant } from '../api/api';
 import { useTranslation } from 'react-i18next';
+import { InstallPWA } from '../components/InstallPWA';
 
 interface Message {
   id: string;
@@ -215,21 +216,7 @@ export const Chat: React.FC = () => {
       }
   };
   
-  // PWA logic
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showInstallBtn, setShowInstallBtn] = useState(false);
-  useEffect(() => {
-    const handler = (e: any) => { e.preventDefault(); setDeferredPrompt(e); setShowInstallBtn(true); };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') setShowInstallBtn(false);
-    setDeferredPrompt(null);
-  };
+  // PWA logic видалено - тепер у компоненті InstallPWA
 
   // ДОПОМІЖНА ФУНКЦІЯ: Обробка результату від API
   const processApiResponse = (response: ChatResponse) => {
@@ -364,11 +351,7 @@ export const Chat: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-            {showInstallBtn && (
-                <button onClick={handleInstallClick} className="text-[10px] sm:text-xs bg-gray-200 dark:bg-white/20 text-gray-800 dark:text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium hover:bg-gray-300 dark:hover:bg-white/30 transition">
-                    📲 <span className="hidden sm:inline">{t('chat.install')}</span>
-                </button>
-            )}
+            <InstallPWA />
             
             <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-gray-600 dark:text-white/70 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full transition">
                 {theme === 'dark' ? (

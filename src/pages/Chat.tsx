@@ -14,9 +14,9 @@ import {
   createNewConversation,
   updateConversationMessages,
   type ChatConversation,
-} from '../utils/chatHistory';
-import type { Message } from '../types';
-import { USE_MOCKS } from '../api/mocks';
+} from '../utils/chatHistory.ts';
+import type { Message } from '../types/index.ts';
+import { USE_MOCKS } from '../api/mocks.ts';
 
 const legalChipsKeys = [
     'patronato_query',
@@ -679,8 +679,8 @@ export const Chat: React.FC = () => {
                   {msg.sender === 'bot' && (
                     <div className="mt-3">
                       {/* Action Items */}
-                      {msg.action_items && msg.action_items.map((item, index) => (
-                        <ActionItemCard key={index} actionItem={item as ActionItem} />
+                      {msg.action_items && msg.action_items.map((item: ActionItem, index: number) => (
+                        <ActionItemCard key={index} actionItem={item} />
                       ))}
 
                       {/* Consultant Card */}
@@ -689,9 +689,8 @@ export const Chat: React.FC = () => {
                           <h4 className="text-lg font-semibold text-white dark:text-white mb-2">
                             💡 {t('consultant.recommendation')}
                           </h4>
-                          {msg.consultants.map((consultant, index) => (
-                            // Відображаємо лише першого консультанта для MVP
-                            index === 0 && <ConsultantCard key={(consultant as Consultant).id} consultant={consultant as Consultant} />
+                          {msg.consultants.map((consultant: Consultant, index: number) => (
+                            index === 0 && <ConsultantCard key={consultant.id} consultant={consultant} />
                           ))}
                         </div>
                       )}

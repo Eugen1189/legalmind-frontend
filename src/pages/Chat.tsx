@@ -6,19 +6,17 @@ import { sendMessageToBackend, processAudio } from '../api/api';
 import type { Clarification, ChatResponse, ActionItem, Consultant } from '../api/api';
 import { useTranslation } from 'react-i18next';
 import { InstallPWA } from '../components/InstallPWA';
-
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'bot';
-  timestamp: number;
-  fileName?: string;
-  // НОВЕ: Індикатори
-  source?: "rag" | "web" | "hybrid"; // [cite: 71]
-  confidence?: number; // [cite: 78]
-  consultants?: Consultant[]; // НОВЕ
-  action_items?: ActionItem[]; // НОВЕ
-}
+import {
+  getChatHistory,
+  saveConversation,
+  getConversation,
+  deleteConversation,
+  createNewConversation,
+  updateConversationMessages,
+  type ChatConversation,
+} from '../utils/chatHistory';
+import type { Message } from '../types';
+import { USE_MOCKS } from '../api/mocks';
 
 const legalChipsKeys = [
     'patronato_query',
@@ -143,12 +141,40 @@ export const Chat: React.FC = () => {
   const audioInputRef = useRef<HTMLInputElement>(null);
   // НОВИЙ СТАН: Для зберігання поточного уточнюючого питання
   const [currentClarification, setCurrentClarification] = useState<Clarification | null>(null);
+  
+  // НОВЕ: Стани для історії чату
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Завантажити історію розмов при монтуванні
   useEffect(() => {
-    if (messages.length === 0) {
-        // Залишаємо messages порожнім для відображення Welcome Screen.
+    const history = getChatHistory();
+    setConversations(history);
+    
+    // Якщо є розмови, завантажити останню
+    if (history.length > 0) {
+      const lastConversation = history[0];
+      setCurrentConversationId(lastConversation.id);
+      setMessages(lastConversation.messages);
+    } else {
+      // Створити нову розмову
+      const newConv = createNewConversation();
+      setCurrentConversationId(newConv.id);
+      saveConversation(newConv);
+      setConversations([newConv]);
     }
   }, []);
+
+  // Зберегти повідомлення при їх зміні
+  useEffect(() => {
+    if (currentConversationId && messages.length > 0) {
+      updateConversationMessages(currentConversationId, messages);
+      // Оновити список розмов
+      const history = getChatHistory();
+      setConversations(history);
+    }
+  }, [messages, currentConversationId]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -312,6 +338,50 @@ export const Chat: React.FC = () => {
       const promptText = t(`chips.${key}_prompt`);
       executeSend(promptText, undefined);
   };
+
+  // НОВЕ: Функції для роботи з історією
+  const handleNewConversation = () => {
+    const newConv = createNewConversation();
+    setCurrentConversationId(newConv.id);
+    setMessages([]);
+    setCurrentClarification(null);
+    saveConversation(newConv);
+    const history = getChatHistory();
+    setConversations(history);
+    setSidebarOpen(false);
+  };
+
+  const handleSelectConversation = (conversationId: string) => {
+    const conversation = getConversation(conversationId);
+    if (conversation) {
+      setCurrentConversationId(conversationId);
+      setMessages(conversation.messages);
+      setCurrentClarification(null);
+      setSidebarOpen(false);
+    }
+  };
+
+  const handleDeleteConversation = (e: React.MouseEvent, conversationId: string) => {
+    e.stopPropagation();
+    if (window.confirm('Ви впевнені, що хочете видалити цю розмову?')) {
+      deleteConversation(conversationId);
+      const history = getChatHistory();
+      setConversations(history);
+      
+      // Якщо видаляємо поточну розмову
+      if (conversationId === currentConversationId) {
+        if (history.length > 0) {
+          // Завантажити першу доступну розмову
+          const firstConv = history[0];
+          setCurrentConversationId(firstConv.id);
+          setMessages(firstConv.messages);
+        } else {
+          // Створити нову розмову, якщо немає інших
+          handleNewConversation();
+        }
+      }
+    }
+  };
   
   const handleSend = async () => {
     if (!inputValue.trim() && !selectedFile) return;
@@ -340,14 +410,143 @@ export const Chat: React.FC = () => {
       transition-colors duration-300
     `}>
       
+      {/* БІЧНА ПАНЕЛЬ */}
+      <div className={`
+        fixed left-0 top-0 h-full w-64 sm:w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
+        transform transition-transform duration-300 z-30 shadow-xl
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        flex flex-col
+      `}>
+        {/* Заголовок бічної панелі */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Історія чату</h2>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-1 text-gray-600 dark:text-white/70 hover:bg-gray-200 dark:hover:bg-white/10 rounded"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Кнопка створення нової розмови */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <button
+            onClick={handleNewConversation}
+            className="w-full bg-primary hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition relative overflow-hidden"
+            style={{
+              boxShadow: '0 0 15px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.3)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 20px rgba(59, 130, 246, 0.7), 0 0 40px rgba(59, 130, 246, 0.5)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.3)';
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            <span>Нова розмова</span>
+          </button>
+        </div>
+
+        {/* Список розмов */}
+        <div className="flex-1 overflow-y-auto">
+          {conversations.length === 0 ? (
+            <div className="p-4 text-center text-gray-500 dark:text-white/50 text-sm">
+              Немає збережених розмов
+            </div>
+          ) : (
+            <div className="p-2">
+              {conversations.map((conv) => (
+                <div
+                  key={conv.id}
+                  onClick={() => handleSelectConversation(conv.id)}
+                  className={`
+                    p-3 rounded-lg mb-2 cursor-pointer transition relative
+                    ${conv.id === currentConversationId
+                      ? 'bg-blue-100 dark:bg-blue-900/30 border-2 border-cyan-400/70 dark:border-cyan-400/70'
+                      : 'bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 border border-transparent'
+                    }
+                  `}
+                  style={conv.id === currentConversationId ? {
+                    boxShadow: '0 0 15px rgba(34, 211, 238, 0.4), 0 0 30px rgba(34, 211, 238, 0.2)',
+                  } : {}}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                        {conv.title}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-white/50 mt-1">
+                        {new Date(conv.updatedAt).toLocaleDateString('uk-UA', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => handleDeleteConversation(e, conv.id)}
+                      className="p-1 text-gray-400 hover:text-red-500 transition shrink-0"
+                      title="Видалити розмову"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Оверлей для закриття бічної панелі на мобільних */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 sm:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* HEADER: Адаптація для світлого режиму */}
       <header className="
         bg-white/90 dark:bg-black/50 backdrop-blur-md border-b border-gray-200 dark:border-white/10
         px-3 sm:px-4 py-2 sm:py-3 flex justify-between items-center sticky top-0 z-20 shadow-md transition-colors
       ">
+        {/* Індикатор мок-режиму (показується тільки коли використовуються моки) */}
+        {USE_MOCKS && (
+          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full bg-yellow-500 text-black text-xs px-2 py-1 rounded-b-md font-semibold z-30">
+            🧪 Тестовий режим (моки)
+          </div>
+        )}
         <div className="flex items-center gap-2">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 text-white flex items-center justify-center font-bold text-sm sm:text-base">L</div>
-            <h1 className="font-bold text-lg sm:text-xl text-gray-900 dark:text-white tracking-wider hidden sm:block">LegalMind</h1>
+          {/* Кнопка відкриття бічної панелі */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-1.5 text-gray-600 dark:text-white/70 hover:bg-gray-200 dark:hover:bg-white/10 rounded transition relative"
+            style={{
+              boxShadow: '0 0 8px rgba(34, 211, 238, 0.3)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 15px rgba(34, 211, 238, 0.6), 0 0 25px rgba(34, 211, 238, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 8px rgba(34, 211, 238, 0.3)';
+            }}
+            title="Відкрити історію"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 text-white flex items-center justify-center font-bold text-sm sm:text-base">L</div>
+          <h1 className="font-bold text-lg sm:text-xl text-gray-900 dark:text-white tracking-wider hidden sm:block">LegalMind</h1>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -372,7 +571,8 @@ export const Chat: React.FC = () => {
       </header>
 
       {/* CHAT AREA */}
-      <main className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4 max-w-2xl lg:max-w-3xl mx-auto w-full">
+      <main className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4 max-w-2xl lg:max-w-3xl mx-auto w-full relative">
+        <div className="relative z-10">
         {messages.length === 0 ? (
           // --- WELCOME SCREEN (Chips) ---
           <div className="pt-6 sm:pt-10 md:pt-20 px-2 sm:px-4">
@@ -385,12 +585,21 @@ export const Chat: React.FC = () => {
                           key={key}
                           onClick={() => handleChipClick(key)}
                           className="
-                              bg-white text-gray-800 border border-gray-300 
-                              dark:bg-white/10 dark:text-white/90 dark:border-white/20
+                              bg-white text-gray-800 border-2 border-cyan-400/50 dark:border-cyan-400/70
+                              dark:bg-white/10 dark:text-white/90
                               py-2 sm:py-2.5 md:py-3 px-3 sm:px-4 md:px-5 rounded-full text-sm sm:text-base md:text-lg font-medium 
                               hover:bg-gray-100 dark:hover:bg-white/20 transition
-                              shadow-md backdrop-blur-sm break-words
+                              backdrop-blur-sm break-words relative
                           "
+                          style={{
+                            boxShadow: '0 0 10px rgba(34, 211, 238, 0.3), 0 0 20px rgba(34, 211, 238, 0.2)',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.boxShadow = '0 0 15px rgba(34, 211, 238, 0.5), 0 0 30px rgba(34, 211, 238, 0.3)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.boxShadow = '0 0 10px rgba(34, 211, 238, 0.3), 0 0 20px rgba(34, 211, 238, 0.2)';
+                          }}
                       >
                           {key === 'patronato_query' && '🇮🇹 '}
                           {key === 'check_deadlines' && '⏳ '}
@@ -471,7 +680,7 @@ export const Chat: React.FC = () => {
                     <div className="mt-3">
                       {/* Action Items */}
                       {msg.action_items && msg.action_items.map((item, index) => (
-                        <ActionItemCard key={index} actionItem={item} />
+                        <ActionItemCard key={index} actionItem={item as ActionItem} />
                       ))}
 
                       {/* Consultant Card */}
@@ -482,7 +691,7 @@ export const Chat: React.FC = () => {
                           </h4>
                           {msg.consultants.map((consultant, index) => (
                             // Відображаємо лише першого консультанта для MVP
-                            index === 0 && <ConsultantCard key={consultant.id} consultant={consultant} />
+                            index === 0 && <ConsultantCard key={(consultant as Consultant).id} consultant={consultant as Consultant} />
                           ))}
                         </div>
                       )}
@@ -524,7 +733,16 @@ export const Chat: React.FC = () => {
                       <button
                         key={index}
                         onClick={() => handleClarificationAnswer(option)}
-                        className="bg-primary/80 hover:bg-primary text-white py-2 px-4 rounded-full text-sm font-medium transition shadow-md"
+                        className="bg-primary/80 hover:bg-primary text-white py-2 px-4 rounded-full text-sm font-medium transition relative"
+                        style={{
+                          boxShadow: '0 0 10px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.3)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.7), 0 0 30px rgba(59, 130, 246, 0.5)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.3)';
+                        }}
                       >
                         {option}
                       </button>
@@ -537,6 +755,7 @@ export const Chat: React.FC = () => {
             <div ref={messagesEndRef} />
           </>
         )}
+        </div>
       </main>
 
       {/* INPUT AREA */}
@@ -618,7 +837,24 @@ export const Chat: React.FC = () => {
               <button 
                   onClick={handleSend}
                   disabled={(!inputValue.trim() && !selectedFile) || isLoading}
-                  className={`p-2 sm:p-3 rounded-full transition shrink-0 ${(!inputValue.trim() && !selectedFile) || isLoading ? 'bg-gray-300 dark:bg-white/20 text-gray-600 dark:text-white/70 cursor-not-allowed' : 'bg-primary text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30'}`}
+                  className={`p-2 sm:p-3 rounded-full transition shrink-0 relative ${
+                    (!inputValue.trim() && !selectedFile) || isLoading 
+                      ? 'bg-gray-300 dark:bg-white/20 text-gray-600 dark:text-white/70 cursor-not-allowed' 
+                      : 'bg-primary text-white hover:bg-blue-700'
+                  }`}
+                  style={(!inputValue.trim() && !selectedFile) || isLoading ? {} : {
+                    boxShadow: '0 0 15px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.4), 0 0 45px rgba(59, 130, 246, 0.2)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!((!inputValue.trim() && !selectedFile) || isLoading)) {
+                      e.currentTarget.style.boxShadow = '0 0 20px rgba(59, 130, 246, 0.8), 0 0 40px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.4)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!((!inputValue.trim() && !selectedFile) || isLoading)) {
+                      e.currentTarget.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.4), 0 0 45px rgba(59, 130, 246, 0.2)';
+                    }
+                  }}
                   type="button"
               >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6">

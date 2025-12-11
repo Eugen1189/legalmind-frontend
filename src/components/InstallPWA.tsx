@@ -17,7 +17,10 @@ export const InstallPWA: React.FC = () => {
 
   useEffect(() => {
     // Перевірка чи додаток вже встановлено
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                        (window.navigator as any).standalone === true;
+    
+    if (isStandalone) {
       setIsInstalled(true);
       return;
     }
@@ -26,28 +29,36 @@ export const InstallPWA: React.FC = () => {
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(isIOSDevice);
 
-    // Визначення Safari
-    const isSafariBrowser = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    // Визначення Safari (покращена перевірка)
+    const isSafariBrowser = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(navigator.userAgent) ||
+                           (isIOSDevice && !/(crios|fxios|edgios)/i.test(navigator.userAgent));
     setIsSafari(isSafariBrowser);
+    
+    // Debug log
+    console.log('PWA Install Button:', {
+      isIOSDevice,
+      isSafariBrowser,
+      userAgent: navigator.userAgent,
+      standalone: (window.navigator as any).standalone
+    });
 
-    // Для Chrome/Edge - використовуємо beforeinstallprompt
+    // ЗАВЖДИ показуємо кнопку встановлення
+    setShowInstallButton(true);
+
+    // Для Chrome/Edge - слухаємо beforeinstallprompt
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setShowInstallButton(true);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
-
-    // Для Safari/iOS - показуємо кнопку одразу
-    if (isIOSDevice || isSafariBrowser) {
-      setShowInstallButton(true);
-    }
 
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
   const handleInstallClick = async () => {
+    console.log('Install button clicked:', { isIOS, isSafari, hasDeferredPrompt: !!deferredPrompt });
+    
     // Якщо iOS або Safari - показуємо інструкції
     if (isIOS || isSafari) {
       setShowSafariInstructions(true);
@@ -56,6 +67,8 @@ export const InstallPWA: React.FC = () => {
 
     // Для Chrome/Edge - викликаємо нативний промпт
     if (!deferredPrompt) {
+      // Fallback: якщо немає нативного промпту, показуємо інструкції
+      setShowSafariInstructions(true);
       return;
     }
 
